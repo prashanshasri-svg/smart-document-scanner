@@ -1,0 +1,139 @@
+import cv2
+import numpy as np
+import argparse
+
+
+def order_points(points):
+    """Return points in top-left, top-right, bottom-right, bottom-left order."""
+    points = np.array(points, dtype="float32")
+    s = points.sum(axis=1)
+    d = np.diff(points, axis=1).reshape(-1)
+
+    ordered = np.zeros((4, 2), dtype="float32")
+    ordered[0] = points[np.argmin(s)]   # top-left
+    ordered[2] = points[np.argmax(s)]   # bottom-right
+    ordered[1] = points[np.argmin(d)]   # top-right
+    ordered[3] = points[np.argmax(d)]   # bottom-left
+    return ordered
+
+
+def four_point_transform(image, points):
+    rect = order_points(points)
+    (tl, tr, br, bl) = rect
+
+    width_a = np.linalg.norm(br - bl)
+    width_b = np.linalg.norm(tr - tl)
+    max_width = max(int(width_a), int(width_b))
+
+    height_a = np.linalg.norm(tr - br)
+    height_b = np.linalg.norm(tl - bl)
+    max_height = max(int(height_a), int(height_b))
+
+    dst = np.array([
+        [0, 0],
+        [max_width - 1, 0],
+        [max_width - 1, max_height - 1],
+        [0, max_height - 1]
+    ], dtype="float32")
+
+    matrix = cv2.getPerspectiveTransform(rect, dst)
+    return cv2.warpPerspective(image, matrix, (max_width, max_height))
+
+
+def find_document(image):
+    # Resize for faster and more stable processing.
+    height, width = image.shape[:2]
+    scale = 800 / width if width > 800 else 1.0
+    resized = cv2.resize(image, (int(width * scale), int(height * scale)))
+
+    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 75, 200)
+
+    contours, _ = cv2.findContours(
+        edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+    )
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    image_area = resized.shape[0] * resized.shape[1]
+
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < 0.20 * image_area:
+            continue
+
+        perimeter = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
+
+        if len(approx) == 4:
+            points = approx.reshape(4, 2).astype("float32")
+            # Convert points from resized image coordinates to original image coordinates.
+            points /= scale
+            return points, edges
+
+    return None, edges
+
+
+def scan_document(image):
+    points, _ = find_document(image)
+
+    if points is None:
+        raise ValueError(
+            "Could not detect a 4-corner document. "
+            "Use a clear photo with the whole document visible."
+        )
+
+    warped = four_point_transform(image, points)
+
+    gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+    enhanced = cv2.adaptiveThreshold(
+        gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        21,
+        10
+    )
+
+    return warped, enhanced, points
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Smart Document Scanner using OpenCV"
+    )
+    parser.add_argument("--input", required=True, help="Path to input document image")
+    parser.add_argument("--output", default="scanned_document.jpg",
+                        help="Path for final scanned output")
+    parser.add_argument("--warped", default="warped_document.jpg",
+                        help="Path for perspective-corrected color output")
+    parser.add_argument("--edges", default="document_edges.jpg",
+                        help="Path for edge-detection output")
+    args = parser.parse_args()
+
+    image = cv2.imread(args.input)
+
+    if image is None:
+        raise FileNotFoundError(f"Could not read image: {args.input}")
+
+    try:
+        warped, enhanced, points = scan_document(image)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return
+
+    _, edges = find_document(image)
+
+    cv2.imwrite(args.warped, warped)
+    cv2.imwrite(args.output, enhanced)
+    cv2.imwrite(args.edges, edges)
+
+    print("Document scanning completed successfully.")
+    print(f"Scanned output : {args.output}")
+    print(f"Color warped   : {args.warped}")
+    print(f"Edge image     : {args.edges}")
+    print("Detected corners:", points.astype(int).tolist())
+
+
+if __name__ == "__main__":
+    main()
