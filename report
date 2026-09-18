@@ -1,0 +1,146 @@
+# Smart Document Scanner Using OpenCV
+
+## 1. Title
+
+**Smart Document Scanner Using OpenCV**
+
+## 2. Abstract
+
+The Smart Document Scanner is a Computer Vision project that converts a photograph of a physical document into a perspective-corrected digital scan. The system detects the document boundary using edge and contour analysis, identifies its four corners, applies a perspective transformation, and improves readability using adaptive thresholding.
+
+The project demonstrates practical applications of image preprocessing, Canny edge detection, contour detection, polygon approximation, and geometric transformation.
+
+## 3. Problem Statement
+
+Photographs of documents often contain perspective distortion because the camera is not directly above the paper. Manual cropping and correction can be time-consuming. The proposed system automatically detects the document and produces a corrected scanned version.
+
+## 4. Objectives
+
+- Detect a document from an input image.
+- Identify the four corners of the document.
+- Correct perspective distortion.
+- Produce a clean scanned image.
+- Demonstrate important Computer Vision techniques in one practical application.
+- Make the project executable through the command line.
+
+## 5. Technologies Used
+
+- Python
+- OpenCV
+- NumPy
+
+## 6. Methodology
+
+### 6.1 Input Image
+A photograph containing a document is provided to the program.
+
+### 6.2 Grayscale Conversion
+The image is converted from BGR/RGB representation to grayscale. This simplifies further processing.
+
+### 6.3 Gaussian Blur
+Gaussian filtering reduces small image noise before edge detection.
+
+### 6.4 Canny Edge Detection
+Canny edge detection identifies strong intensity changes corresponding to possible document boundaries.
+
+### 6.5 Contour Detection
+Contours are extracted from the edge image and sorted according to their area.
+
+### 6.6 Polygon Approximation
+Large contours are approximated using the Douglas-Peucker method through OpenCV's `approxPolyDP`. A four-sided contour is selected as the document boundary.
+
+### 6.7 Perspective Transformation
+The four corners are ordered as top-left, top-right, bottom-right and bottom-left. A homography/perspective transformation maps the quadrilateral to a rectangular output.
+
+### 6.8 Adaptive Thresholding
+The corrected document is converted to grayscale and adaptive thresholding creates a cleaner black-and-white scan, which can improve readability under uneven lighting.
+
+## 7. Algorithm
+
+```text
+Start
+  ↓
+Read input image
+  ↓
+Resize image for processing
+  ↓
+Convert to grayscale
+  ↓
+Apply Gaussian blur
+  ↓
+Apply Canny edge detection
+  ↓
+Find contours
+  ↓
+Sort contours by area
+  ↓
+Approximate contours with polygons
+  ↓
+Find a large 4-corner contour
+  ↓
+Order the four corners
+  ↓
+Apply perspective transformation
+  ↓
+Convert corrected image to grayscale
+  ↓
+Apply adaptive thresholding
+  ↓
+Save output images
+  ↓
+End
+```
+
+## 8. Command-Line Execution
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Run:
+
+```bash
+python main.py --input document.jpg
+```
+
+## 9. Expected Output
+
+The system produces:
+1. A perspective-corrected color document.
+2. A black-and-white scanned document.
+3. An edge image showing detected image boundaries.
+
+## 10. Advantages
+
+- Simple and lightweight.
+- Does not require a trained neural network.
+- Works from the command line.
+- Demonstrates multiple Computer Vision concepts.
+- Useful for digitizing paper documents.
+
+## 11. Limitations
+
+- The document should have a clearly visible boundary.
+- Very poor lighting or heavy shadows can reduce detection accuracy.
+- Documents with heavily folded or irregular boundaries may not be detected.
+- The current version is designed primarily for approximately rectangular documents.
+
+## 12. Future Scope
+
+- Add support for live webcam scanning.
+- Add automatic rotation correction.
+- Add OCR for extracting document text.
+- Add PDF generation.
+- Improve detection under difficult lighting conditions.
+
+## 13. Conclusion
+
+The Smart Document Scanner demonstrates how fundamental Computer Vision operations can be combined to solve a practical problem. Edge detection and contour analysis locate the document, while perspective transformation corrects its orientation. Adaptive thresholding then creates a cleaner scanned output.
+
+## 14. References
+
+- OpenCV documentation
+- Python documentation
+- Standard Computer Vision concepts covered in the course
